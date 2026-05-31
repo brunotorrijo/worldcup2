@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Login or register to create your World Cup 2026 prediction league.">
+  <title>Login — WC26 Prediction League</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+
+  <main class="page-content">
+    <div class="container-sm" style="padding-top: 3rem;">
+      <div class="card fade-in">
+        <div class="text-center mb-3">
+          <h1 style="font-size: 1.5rem;">⚽ League Creator</h1>
+          <p class="text-muted mt-1" style="font-size: 0.9rem;">Create an account to manage your prediction league</p>
+        </div>
+
+        <div class="tabs" id="auth-tabs">
+          <button class="tab active" data-tab="login" id="login-tab">Login</button>
+          <button class="tab" data-tab="register" id="register-tab">Register</button>
+        </div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label class="form-label" for="login-username">Username</label>
+            <input type="text" class="form-input" id="login-username" placeholder="Your username" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <input type="password" class="form-input" id="login-password" placeholder="Your password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="login-submit">Login</button>
+        </form>
+
+        <form id="register-form" class="hidden">
+          <div class="form-group">
+            <label class="form-label" for="reg-username">Username</label>
+            <input type="text" class="form-input" id="reg-username" placeholder="Choose a username" minlength="3" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Password</label>
+            <input type="password" class="form-input" id="reg-password" placeholder="Choose a password" minlength="4" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-confirm">Confirm Password</label>
+            <input type="password" class="form-input" id="reg-confirm" placeholder="Confirm your password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="register-submit">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/auth.js"></script>
+</body>
+</html>

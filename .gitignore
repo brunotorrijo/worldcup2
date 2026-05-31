@@ -1,0 +1,7 @@
+node_modules/
+db/worldcup.db
+db/worldcup.db-wal
+db/worldcup.db-shm
+.env
+*.log
+.DS_Store

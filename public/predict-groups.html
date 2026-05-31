@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Predict all World Cup 2026 group stage matches and standings.">
+  <title>Group Stage Predictions — WC26</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <nav class="nav" id="main-nav"></nav>
+
+  <main class="page-content">
+    <div class="container" style="max-width: 900px;">
+      <div class="flex-between mb-2">
+        <div>
+          <h1 style="font-size: 1.5rem;">Group Stage</h1>
+          <p class="text-muted" style="font-size: 0.85rem;">Predict match scores and group standings</p>
+        </div>
+        <button class="btn btn-primary" id="save-all-btn">Save All Predictions</button>
+      </div>
+
+      <div id="progress-area" class="mb-2"></div>
+
+      <div class="group-tabs" id="group-tabs"></div>
+
+      <div id="group-content">
+        <div class="flex-center" style="padding: 3rem;"><div class="loader"></div></div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/predict-groups.js"></script>
+</body>
+</html>
