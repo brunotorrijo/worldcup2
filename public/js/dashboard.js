@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     list.innerHTML = players.map(p => `
-      <div class="flex-between" style="padding: 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.03);" data-player="${p.id}">
+      <div class="flex-between" style="padding: 0.6rem 0; border-bottom: 1px solid var(--border);" data-player="${p.id}">
         <div class="flex items-center gap-1">
           <span style="font-weight: 500; font-size: 0.9rem;">${escapeHtml(p.display_name)}</span>
           ${p.is_creator ? '<span class="badge badge-gold">Creator</span>' : ''}
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const hasResult = match.home_score !== null;
 
     return `
-      <div class="result-entry" style="background: rgba(255,255,255,0.02); border-radius: 8px; padding: 0.85rem; margin-bottom: 0.5rem;">
+      <div class="result-entry" style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; margin-bottom: 0.5rem;">
         <div class="flex items-center gap-1" style="flex-wrap: wrap;">
           <span class="flag-emoji">${homeFlag}</span>
           <span style="font-size: 0.85rem; font-weight: 500; min-width: 80px;">${escapeHtml(homeName)}</span>
