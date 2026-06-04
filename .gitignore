@@ -5,3 +5,5 @@ db/worldcup.db-shm
 .env
 *.log
 .DS_Store
+auth
+auth-wal

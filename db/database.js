@@ -1,25 +1,63 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const { createClient } = require('@libsql/client');
 
-const DB_PATH = path.join(__dirname, 'worldcup.db');
-const db = new Database(DB_PATH);
+let db;
 
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+function getDb() {
+  if (!db) {
+    const url = process.env.TURSO_URL;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
 
-// Run schema
-const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-db.exec(schema);
+    if (!url) {
+      throw new Error('TURSO_URL environment variable is required');
+    }
 
-// Seed if teams table is empty
-const count = db.prepare('SELECT COUNT(*) as count FROM teams').get();
-if (count.count === 0) {
-  const seed = fs.readFileSync(path.join(__dirname, 'seed.sql'), 'utf8');
-  db.exec(seed);
-  console.log('Database seeded with World Cup 2026 data');
+    db = createClient({
+      url,
+      authToken,
+      intMode: 'number'
+    });
+  }
+  return db;
 }
 
-console.log('Database initialized');
+/**
+ * Execute a query that returns rows (SELECT)
+ * Returns array of row objects
+ */
+async function query(sql, args = []) {
+  const client = getDb();
+  const result = await client.execute({ sql, args });
+  return result.rows;
+}
 
-module.exports = db;
+/**
+ * Execute a query that returns a single row (SELECT ... LIMIT 1)
+ * Returns a single row object or null
+ */
+async function queryOne(sql, args = []) {
+  const rows = await query(sql, args);
+  return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Execute a statement (INSERT, UPDATE, DELETE)
+ * Returns { rowsAffected, lastInsertRowid }
+ */
+async function execute(sql, args = []) {
+  const client = getDb();
+  const result = await client.execute({ sql, args });
+  return {
+    rowsAffected: result.rowsAffected,
+    lastInsertRowid: Number(result.lastInsertRowid)
+  };
+}
+
+/**
+ * Execute multiple statements in a batch (transaction)
+ */
+async function batch(statements) {
+  const client = getDb();
+  return client.batch(statements, 'write');
+}
+
+module.exports = { getDb, query, queryOne, execute, batch };
