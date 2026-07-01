@@ -7,3 +7,4 @@ db/worldcup.db-shm
 .DS_Store
 auth
 auth-wal
+.env*

@@ -107,6 +107,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         </div>
 
+        <!-- Populate Knockout Bracket (temporary) -->
+        <div class="card mb-3" id="populate-knockout-card">
+          <h3 class="mb-2">⚽ Knockout Controls</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Use these controls to manage the bracket teams.</p>
+          <div class="flex gap-2">
+            <button class="btn btn-primary" id="populate-knockout-btn">Populate R32 Teams</button>
+            <button class="btn btn-ghost" id="reset-knockout-btn" style="color: var(--danger); border: 1px solid var(--danger);">Reset Bracket (R16-Final)</button>
+          </div>
+        </div>
+
         <!-- Players -->
         <div class="card mb-3">
           <div class="flex-between mb-2">
@@ -132,6 +142,39 @@ document.addEventListener('DOMContentLoaded', async () => {
       navigator.clipboard.writeText(league.invite_code).then(() => {
         showToast('Invite code copied!');
       });
+    });
+
+    // Populate knockout bracket
+    document.getElementById('populate-knockout-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('populate-knockout-btn');
+      btn.disabled = true;
+      btn.textContent = 'Populating...';
+      try {
+        await API.post('/api/populate-knockout');
+        showToast('R32 bracket populated! 🎉');
+        btn.textContent = '✅ Done!';
+        setTimeout(() => { document.getElementById('populate-knockout-card').style.display = 'none'; }, 2000);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Populate R32 Teams';
+      }
+    });
+
+    // Reset knockout bracket
+    document.getElementById('reset-knockout-btn')?.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to reset all team assignments from the Round of 16 through the Final? This will not affect the scores you entered in the R32.')) return;
+      
+      const btn = document.getElementById('reset-knockout-btn');
+      btn.disabled = true;
+      try {
+        await API.post('/api/reset-knockout');
+        showToast('Bracket successfully reset! 🧹');
+        setTimeout(() => location.reload(), 1500);
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+      }
     });
 
     // Lock toggles
@@ -185,20 +228,60 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    list.innerHTML = players.map(p => `
-      <div class="flex-between" style="padding: 0.6rem 0; border-bottom: 1px solid var(--border);" data-player="${p.id}">
-        <div class="flex items-center gap-1">
-          <span style="font-weight: 500; font-size: 0.9rem;">${escapeHtml(p.display_name)}</span>
-          ${p.is_creator ? '<span class="badge badge-gold">Creator</span>' : ''}
-        </div>
-        <div class="flex gap-1">
-          ${!p.is_creator ? `
+    list.innerHTML = players.map(p => {
+      const prog = p.predictionProgress || {};
+      const gm = prog.groupMatches || 0;
+      const gmT = prog.groupMatchesTotal || 72;
+      const gs = prog.groupStandings || 0;
+      const gsT = prog.groupStandingsTotal || 36;
+      const ko = prog.knockout || 0;
+
+      const gmPct = gmT > 0 ? Math.round((gm / gmT) * 100) : 0;
+      const gsPct = gsT > 0 ? Math.round((gs / gsT) * 100) : 0;
+      const allDone = gm === gmT && gs === gsT;
+
+      const statusIcon = allDone ? '✅' : (gm > 0 || gs > 0) ? '🟡' : '⬜';
+
+      return `
+      <div class="player-card-row" data-player="${p.id}">
+        <div class="player-card-header flex-between">
+          <div class="flex items-center gap-1">
+            <span style="font-size: 1.1rem;">${statusIcon}</span>
+            <span style="font-weight: 600; font-size: 0.95rem;">${escapeHtml(p.display_name)}</span>
+            ${p.is_creator ? '<span class="badge badge-gold">Creator</span>' : ''}
+          </div>
+          <div class="flex gap-1">
+            <button class="btn btn-primary btn-sm view-preds-btn" data-id="${p.id}" data-name="${escapeHtml(p.display_name)}">👁 View</button>
             <button class="btn btn-ghost btn-sm edit-name-btn" data-id="${p.id}" data-name="${escapeHtml(p.display_name)}">✏️</button>
-            <button class="btn btn-ghost btn-sm delete-player-btn" data-id="${p.id}" style="color: var(--danger);">✕</button>
-          ` : ''}
+            ${!p.is_creator ? `
+              <button class="btn btn-ghost btn-sm delete-player-btn" data-id="${p.id}" style="color: var(--danger);">✕</button>
+            ` : ''}
+          </div>
+        </div>
+        <div style="padding: 0.4rem 0 0.6rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 120px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px;">Match Scores <strong>${gm}/${gmT}</strong></div>
+            <div style="background: var(--bg-alt); border-radius: 6px; height: 6px; overflow: hidden;">
+              <div style="width: ${gmPct}%; height: 100%; background: ${gmPct === 100 ? 'var(--success)' : 'var(--accent)'}; border-radius: 6px; transition: width 0.3s;"></div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 120px;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px;">Group Standings <strong>${gs}/${gsT}</strong></div>
+            <div style="background: var(--bg-alt); border-radius: 6px; height: 6px; overflow: hidden;">
+              <div style="width: ${gsPct}%; height: 100%; background: ${gsPct === 100 ? 'var(--success)' : 'var(--accent)'}; border-radius: 6px; transition: width 0.3s;"></div>
+            </div>
+          </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
+
+    // View predictions handler
+    list.querySelectorAll('.view-preds-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        showPlayerPredictions(leagueId, btn.dataset.id, btn.dataset.name);
+      });
+    });
 
     // Edit name handlers
     list.querySelectorAll('.edit-name-btn').forEach(btn => {
@@ -230,6 +313,107 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  async function showPlayerPredictions(leagueId, playerId, playerName) {
+    // Create modal overlay
+    let overlay = document.getElementById('pred-modal-overlay');
+    if (overlay) overlay.remove();
+
+    overlay = document.createElement('div');
+    overlay.id = 'pred-modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px);';
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:var(--surface);border-radius:12px;max-width:650px;width:100%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);';
+
+    modal.innerHTML = `
+      <div style="padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--surface);z-index:1;border-radius:12px 12px 0 0;">
+        <h3 style="margin:0;font-size:1.1rem;">📋 ${escapeHtml(playerName)}'s Predictions</h3>
+        <button id="close-pred-modal" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-muted);padding:0 0.25rem;">✕</button>
+      </div>
+      <div id="pred-modal-body" style="padding:1.25rem 1.5rem;">
+        <div class="flex-center" style="padding:2rem;"><div class="loader"></div></div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    modal.querySelector('#close-pred-modal').addEventListener('click', () => overlay.remove());
+
+    try {
+      const [league, preds] = await Promise.all([
+        API.get(`/api/leagues/${leagueId}`),
+        API.get(`/api/leagues/${leagueId}/predictions/groups/${playerId}`)
+      ]);
+
+      const body = modal.querySelector('#pred-modal-body');
+      let html = '';
+
+      // Group match predictions
+      const groupLetters = Object.keys(league.groups).sort();
+      const matchPredMap = {};
+      (preds.matchPredictions || []).forEach(p => { matchPredMap[p.match_id] = p; });
+
+      const groupStandingMap = {};
+      (preds.groupPredictions || []).forEach(p => {
+        if (!groupStandingMap[p.group_letter]) groupStandingMap[p.group_letter] = {};
+        groupStandingMap[p.group_letter][p.position] = p.team_id;
+      });
+
+      // Build a team lookup
+      const teamMap = {};
+      for (const gl of groupLetters) {
+        league.groups[gl].forEach(t => { teamMap[t.id] = t; });
+      }
+
+      for (const gl of groupLetters) {
+        const groupMatches = league.matches.filter(m => m.stage === 'group' && m.group_letter === gl);
+        const hasPreds = groupMatches.some(m => matchPredMap[m.id]) || groupStandingMap[gl];
+
+        if (!hasPreds) continue;
+
+        html += `<div style="margin-bottom:1rem;">
+          <h4 style="margin:0 0 0.5rem;font-size:0.95rem;color:var(--primary);">Group ${gl}</h4>`;
+
+        // Match scores
+        for (const m of groupMatches) {
+          const pred = matchPredMap[m.id];
+          if (!pred) continue;
+          const homeFlag = m.home_flag || '';
+          const awayFlag = m.away_flag || '';
+          html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;font-size:0.85rem;">
+            <span style="min-width:110px;text-align:right;">${homeFlag} ${m.home_team_code || '?'}</span>
+            <span style="font-weight:700;min-width:40px;text-align:center;background:var(--bg-alt);padding:2px 6px;border-radius:4px;">${pred.predicted_home_score} – ${pred.predicted_away_score}</span>
+            <span>${m.away_team_code || '?'} ${awayFlag}</span>
+          </div>`;
+        }
+
+        // Group standing predictions
+        const standings = groupStandingMap[gl];
+        if (standings) {
+          html += `<div style="margin-top:0.4rem;padding:0.4rem 0.6rem;background:var(--bg-alt);border-radius:6px;font-size:0.82rem;">`;
+          for (let pos = 1; pos <= 3; pos++) {
+            const teamId = standings[pos];
+            const team = teamId ? teamMap[teamId] : null;
+            const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉';
+            html += `<div>${medal} ${team ? team.flag_emoji + ' ' + team.name : '—'}</div>`;
+          }
+          html += `</div>`;
+        }
+
+        html += `</div>`;
+      }
+
+      if (!html) {
+        html = '<div class="empty-state"><p>This player has not submitted any predictions yet.</p></div>';
+      }
+
+      body.innerHTML = html;
+    } catch (err) {
+      modal.querySelector('#pred-modal-body').innerHTML = `<div class="empty-state"><p>Failed to load: ${err.message}</p></div>`;
+    }
+  }
+
   function renderResultsTabs(matches, leagueId) {
     const stages = ['group', 'R32', 'R16', 'QF', 'SF', '3RD', 'FINAL'];
     const tabsEl = document.getElementById('results-tabs');
@@ -239,6 +423,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       <button class="tab ${i === 0 ? 'active' : ''}" data-stage="${s}">${getStageName(s)}</button>
     `).join('');
 
+    function formatMatchDate(dateStr) {
+      if (!dateStr) return 'Date TBD';
+      const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T12:00:00Z');
+      return d.toLocaleDateString('en-GB', { weekday: 'long', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' });
+    }
+
     function renderStage(stage) {
       const stageMatches = matches.filter(m => m.stage === stage);
       if (!stageMatches.length) {
@@ -246,40 +436,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // Group by group_letter for group stage
-      if (stage === 'group') {
-        const grouped = {};
-        stageMatches.forEach(m => {
-          const g = m.group_letter;
-          if (!grouped[g]) grouped[g] = [];
-          grouped[g].push(m);
-        });
+      // Sort chronologically
+      stageMatches.sort((a, b) => {
+        const dateA = a.match_date || '9999';
+        const dateB = b.match_date || '9999';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        return (a.match_number || 0) - (b.match_number || 0);
+      });
 
-        matchesEl.innerHTML = Object.keys(grouped).sort().map(g => `
-          <div style="margin-bottom: 1.5rem;">
-            <h4 class="text-gold mb-1">Group ${g}</h4>
-            ${grouped[g].map(m => renderMatchResult(m, leagueId)).join('')}
-          </div>
-        `).join('');
-      } else {
-        matchesEl.innerHTML = stageMatches.map(m => renderMatchResult(m, leagueId, true)).join('');
+      // Group by date
+      let html = '';
+      let currentDate = null;
+      for (const match of stageMatches) {
+        const dateLabel = formatMatchDate(match.match_date);
+        if (dateLabel !== currentDate) {
+          currentDate = dateLabel;
+          html += `<div style="margin-top: 1.25rem; margin-bottom: 0.5rem; padding-bottom: 0.35rem; border-bottom: 2px solid var(--primary-light);">
+            <span style="font-weight: 700; font-size: 0.9rem; color: var(--primary);">📅 ${dateLabel}</span>
+          </div>`;
+        }
+        html += renderMatchResult(match, leagueId, stage !== 'group');
       }
+
+      matchesEl.innerHTML = html;
 
       // Attach save handlers
       matchesEl.querySelectorAll('.save-result-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const matchId = btn.dataset.matchId;
           const row = btn.closest('.result-entry');
+          const homeVal = row.querySelector('.home-score').value;
+          const awayVal = row.querySelector('.away-score').value;
+          
           const data = {
-            homeScore: parseInt(row.querySelector('.home-score').value),
-            awayScore: parseInt(row.querySelector('.away-score').value)
+            homeScore: homeVal === '' ? null : parseInt(homeVal),
+            awayScore: awayVal === '' ? null : parseInt(awayVal)
           };
 
-          if (isNaN(data.homeScore) || isNaN(data.awayScore)) {
-            return showToast('Please enter both scores', 'error');
+          // If one is filled but not the other
+          if ((data.homeScore === null && data.awayScore !== null) || 
+              (data.awayScore === null && data.homeScore !== null)) {
+            return showToast('Please enter both scores, or leave both empty to clear', 'error');
           }
 
-          // Knockout extras
           const etCheck = row.querySelector('.et-check');
           if (etCheck) {
             data.extraTime = etCheck.checked;
@@ -303,7 +502,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
               }
             }
-            // Winner
             const winnerRadio = row.querySelector('input[name="winner-' + matchId + '"]:checked');
             if (winnerRadio) {
               data.winnerId = parseInt(winnerRadio.value);
@@ -314,7 +512,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             await API.post(`/api/matches/${matchId}/result`, data);
             showToast('Result saved!');
             btn.textContent = '✓ Saved';
-            setTimeout(() => btn.textContent = 'Save', 1500);
+            
+            // If this is a knockout match, reload to show bracket updates
+            const isKnockout = !!row.querySelector('.knockout-options') || row.querySelector('input[type="radio"]');
+            setTimeout(() => {
+              btn.textContent = 'Save';
+              if (isKnockout) {
+                location.reload();
+              }
+            }, 1000);
           } catch (err) {
             showToast(err.message, 'error');
           }
@@ -339,10 +545,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const homeFlag = match.home_flag || '⬜';
     const awayFlag = match.away_flag || '⬜';
     const hasResult = match.home_score !== null;
+    const groupBadge = match.group_letter ? `<span class="badge badge-muted" style="font-size: 0.65rem; margin-right: 0.25rem;">Grp ${match.group_letter}</span>` : '';
 
     return `
       <div class="result-entry" style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; margin-bottom: 0.5rem;">
         <div class="flex items-center gap-1" style="flex-wrap: wrap;">
+          ${groupBadge}
           <span class="flag-emoji">${homeFlag}</span>
           <span style="font-size: 0.85rem; font-weight: 500; min-width: 80px;">${escapeHtml(homeName)}</span>
           <input type="number" class="score-input home-score" min="0" max="20" value="${hasResult ? match.home_score : ''}">
@@ -373,7 +581,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <span class="score-separator" style="font-size: 1rem;">–</span>
             <input type="number" class="score-input pen-away-score" min="0" max="20" value="${match.away_penalties || ''}" style="width: 44px; height: 34px; font-size: 0.9rem;">
           </div>
-          <div class="mt-1">
+          <div class="mt-1 flex items-center">
             <span style="font-size: 0.8rem; color: var(--text-muted);">Winner:</span>
             <label style="font-size: 0.85rem; margin-left: 0.5rem; cursor: pointer;">
               <input type="radio" name="winner-${match.id}" value="${match.home_team_id}" ${match.winner_team_id === match.home_team_id ? 'checked' : ''}> ${homeFlag} ${escapeHtml(homeName)}
@@ -381,6 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <label style="font-size: 0.85rem; margin-left: 0.5rem; cursor: pointer;">
               <input type="radio" name="winner-${match.id}" value="${match.away_team_id}" ${match.winner_team_id === match.away_team_id ? 'checked' : ''}> ${awayFlag} ${escapeHtml(awayName)}
             </label>
+            <button class="btn btn-ghost" style="padding: 0 4px; font-size: 0.75rem; margin-left: 0.5rem; color: var(--text-muted);" onclick="this.parentElement.querySelectorAll('input[type=radio]').forEach(r=>r.checked=false); return false;">(Clear)</button>
           </div>
         ` : ''}
       </div>

@@ -4,8 +4,8 @@ const { query, queryOne, execute } = require('../db/database');
 const { requireCreator, identifyPlayer } = require('../middleware/auth');
 const router = express.Router();
 
-const GROUP_STAGE_LOCK_DATE = new Date('2026-06-11T00:00:00Z');
-const KNOCKOUT_LOCK_DATE = new Date('2026-06-28T00:00:00Z');
+const GROUP_STAGE_LOCK_DATE = new Date('2026-06-11T19:00:00Z');
+const KNOCKOUT_LOCK_DATE = new Date('2026-06-28T19:00:00Z');
 
 function isGroupStageLocked(league) {
   if (league.group_predictions_locked) return true;
@@ -85,26 +85,72 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'League not found' });
     }
 
-    const teams = await query('SELECT * FROM teams ORDER BY group_letter, id');
-    const matches = await query(`
-      SELECT m.*,
-        ht.name as home_team_name, ht.code as home_team_code, ht.flag_emoji as home_flag,
-        at.name as away_team_name, at.code as away_team_code, at.flag_emoji as away_flag
-      FROM matches m
-      LEFT JOIN teams ht ON m.home_team_id = ht.id
-      LEFT JOIN teams at ON m.away_team_id = at.id
-      ORDER BY m.match_number
-    `);
-    const players = await query(
-      'SELECT id, display_name, is_creator, created_at FROM players WHERE league_id = ? ORDER BY created_at',
-      [league.id]
-    );
+    const [teams, matches, players] = await Promise.all([
+      query('SELECT * FROM teams ORDER BY group_letter, id'),
+      query(`
+        SELECT m.*,
+          ht.name as home_team_name, ht.code as home_team_code, ht.flag_emoji as home_flag,
+          at.name as away_team_name, at.code as away_team_code, at.flag_emoji as away_flag
+        FROM matches m
+        LEFT JOIN teams ht ON m.home_team_id = ht.id
+        LEFT JOIN teams at ON m.away_team_id = at.id
+        ORDER BY m.match_number
+      `),
+      query(
+        'SELECT id, display_name, is_creator, created_at FROM players WHERE league_id = ? ORDER BY created_at',
+        [league.id]
+      )
+    ]);
 
     const groups = {};
     teams.forEach(t => {
       if (!groups[t.group_letter]) groups[t.group_letter] = [];
       groups[t.group_letter].push(t);
     });
+
+    // Enrich players with prediction progress (bulk queries to avoid N+1)
+    const groupMatchCount = matches.filter(m => m.stage === 'group').length;
+    const groupStandingCount = Object.keys(groups).length * 3;
+
+    const playerIds = players.map(p => p.id);
+
+    if (playerIds.length > 0) {
+      const placeholders = playerIds.map(() => '?').join(',');
+
+      const [mpRows, gpRows, kpRows] = await Promise.all([
+        query(`
+          SELECT p.player_id, COUNT(*) as count FROM predictions p
+          JOIN matches m ON p.match_id = m.id
+          WHERE p.player_id IN (${placeholders}) AND m.stage = 'group'
+          GROUP BY p.player_id
+        `, playerIds),
+        query(`
+          SELECT player_id, COUNT(*) as count FROM group_predictions
+          WHERE player_id IN (${placeholders}) AND position <= 3
+          GROUP BY player_id
+        `, playerIds),
+        query(`
+          SELECT p.player_id, COUNT(*) as count FROM predictions p
+          JOIN matches m ON p.match_id = m.id
+          WHERE p.player_id IN (${placeholders}) AND m.stage != 'group'
+          GROUP BY p.player_id
+        `, playerIds)
+      ]);
+
+      const mpMap = Object.fromEntries(mpRows.map(r => [r.player_id, Number(r.count)]));
+      const gpMap = Object.fromEntries(gpRows.map(r => [r.player_id, Number(r.count)]));
+      const kpMap = Object.fromEntries(kpRows.map(r => [r.player_id, Number(r.count)]));
+
+      for (const player of players) {
+        player.predictionProgress = {
+          groupMatches: mpMap[player.id] || 0,
+          groupMatchesTotal: groupMatchCount,
+          groupStandings: gpMap[player.id] || 0,
+          groupStandingsTotal: groupStandingCount,
+          knockout: kpMap[player.id] || 0
+        };
+      }
+    }
 
     res.json({
       ...league,
@@ -194,6 +240,12 @@ router.put('/:id/players/:playerId', requireCreator, async (req, res) => {
       'UPDATE players SET display_name = ? WHERE id = ? AND league_id = ?',
       [displayName.trim(), req.params.playerId, req.params.id]
     );
+
+    const player = await queryOne('SELECT user_id FROM players WHERE id = ?', [req.params.playerId]);
+    if (player && player.user_id) {
+      await execute('UPDATE users SET username = ? WHERE id = ?', [displayName.trim(), player.user_id]);
+    }
+
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update player' });

@@ -11,16 +11,22 @@
   <nav class="nav" id="main-nav"></nav>
 
   <main class="page-content">
-    <section class="hero">
-      <h1 class="hero-title">World Cup 2026</h1>
-      <p class="hero-subtitle">Prediction League</p>
-      <p class="hero-desc">
-        Predict every match. Compete against your friends. Prove you know football better than anyone.
-      </p>
+    <section class="landing-hero">
+      <canvas id="hero-canvas" class="hero-canvas"></canvas>
+      <div class="hero-content">
+        <div class="hero">
+          <p class="hero-eyebrow">🏆 Canada · Mexico · United States</p>
+          <h1 class="hero-title">World Cup 2026</h1>
+          <p class="hero-subtitle">Prediction League</p>
+          <p class="hero-desc">
+            Predict every match. Compete against your friends. Prove you know football better than anyone.
+          </p>
+        </div>
+      </div>
     </section>
 
     <div class="container">
-      <div class="grid-2" style="max-width: 800px; margin: 0 auto 3rem;">
+      <div class="landing-cta-grid" style="max-width: 800px; margin: 0 auto 3rem;">
         <div class="card fade-in">
           <div class="card-title">🏆 Create a League</div>
           <p class="card-desc">Set up your own prediction league and invite your friends with a simple code.</p>
@@ -39,7 +45,7 @@
         </div>
       </div>
 
-      <section style="max-width: 900px; margin: 0 auto;">
+      <section class="landing-features" style="max-width: 900px; margin: 0 auto;">
         <h2 class="text-center mb-3">How It Works</h2>
         <div class="steps">
           <div class="card step-card fade-in" style="animation-delay: 0.2s;">
@@ -66,7 +72,11 @@
     </div>
   </main>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/landing.js"></script>
   <script>
     document.getElementById('join-form').addEventListener('submit', (e) => {
       e.preventDefault();

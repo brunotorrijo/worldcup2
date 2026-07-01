@@ -97,6 +97,7 @@ function initNav() {
   if (leagueId) {
     linksHTML += `<a href="/predict-groups.html" class="nav-link">Groups</a>`;
     linksHTML += `<a href="/predict-knockout.html" class="nav-link">Knockout</a>`;
+    linksHTML += `<a href="/results.html" class="nav-link">Results</a>`;
     linksHTML += `<a href="/leaderboard.html" class="nav-link">Leaderboard</a>`;
     if (creator) {
       linksHTML += `<a href="/dashboard.html" class="nav-link nav-link-accent">Dashboard</a>`;
@@ -124,8 +125,8 @@ function showLoader(container) {
 
 function formatDate(dateStr) {
   if (!dateStr) return 'TBD';
-  const d = new Date(dateStr + 'T12:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const d = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function escapeHtml(text) {

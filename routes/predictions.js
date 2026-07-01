@@ -3,8 +3,8 @@ const { query, queryOne, execute, batch } = require('../db/database');
 const { identifyPlayer } = require('../middleware/auth');
 const router = express.Router();
 
-const GROUP_STAGE_LOCK_DATE = new Date('2026-06-11T00:00:00Z');
-const KNOCKOUT_LOCK_DATE = new Date('2026-06-28T00:00:00Z');
+const GROUP_STAGE_LOCK_DATE = new Date('2026-06-11T19:00:00Z');
+const KNOCKOUT_LOCK_DATE = new Date('2026-06-28T19:00:00Z');
 
 function isGroupStageLocked(league) {
   if (league.group_predictions_locked) return true;
@@ -50,8 +50,12 @@ router.post('/:id/predictions/groups', identifyPlayer, async (req, res) => {
       return res.status(403).json({ error: 'Group stage predictions are locked. The deadline has passed.' });
     }
 
-    const playerId = req.body.playerId || (req.player && req.player.id);
-    if (!playerId) return res.status(401).json({ error: 'Player not identified' });
+    const tokenPlayerId = req.player && req.player.id;
+    if (!tokenPlayerId) return res.status(401).json({ error: 'Player not authenticated' });
+    if (req.body.playerId && parseInt(req.body.playerId) !== parseInt(tokenPlayerId)) {
+      return res.status(403).json({ error: 'Cannot submit predictions for another player' });
+    }
+    const playerId = tokenPlayerId;
 
     const player = await queryOne(
       'SELECT * FROM players WHERE id = ? AND league_id = ?',
@@ -129,8 +133,12 @@ router.post('/:id/predictions/knockout', identifyPlayer, async (req, res) => {
       return res.status(403).json({ error: 'Knockout predictions are locked. The deadline has passed.' });
     }
 
-    const playerId = req.body.playerId || (req.player && req.player.id);
-    if (!playerId) return res.status(401).json({ error: 'Player not identified' });
+    const tokenPlayerId = req.player && req.player.id;
+    if (!tokenPlayerId) return res.status(401).json({ error: 'Player not authenticated' });
+    if (req.body.playerId && parseInt(req.body.playerId) !== parseInt(tokenPlayerId)) {
+      return res.status(403).json({ error: 'Cannot submit predictions for another player' });
+    }
+    const playerId = tokenPlayerId;
 
     const player = await queryOne(
       'SELECT * FROM players WHERE id = ? AND league_id = ?',
