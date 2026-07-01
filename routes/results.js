@@ -393,8 +393,8 @@ router.post('/leagues/:id/calculate-points', requireCreator, async (req, res) =>
 
         let finalPoints = Math.floor(basePoints * multiplier);
 
-        // Manual override: Force 0 points for Player 28 on the R16 games he missed
-        if (Number(pred.player_id) === 28 && [89, 90, 92].includes(Number(match.match_number))) {
+        // Manual override: Force 0 points for Player 28 AND Player 19 on the R16 games that already happened
+        if ([19, 28].includes(Number(pred.player_id)) && [89, 90, 92].includes(Number(match.match_number))) {
           finalPoints = 0;
         }
 
