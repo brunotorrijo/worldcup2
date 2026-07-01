@@ -398,6 +398,11 @@ router.post('/leagues/:id/calculate-points', requireCreator, async (req, res) =>
           finalPoints = 0;
         }
 
+        // Manual override: Force 0 points for Player 19 on the R32 games he missed
+        if (Number(pred.player_id) === 19 && Number(match.match_number) >= 73 && Number(match.match_number) <= 88) {
+          finalPoints = 0;
+        }
+
         koUpdates.push({
           sql: 'UPDATE predictions SET points_earned = ? WHERE id = ?',
           args: [finalPoints, pred.id]
