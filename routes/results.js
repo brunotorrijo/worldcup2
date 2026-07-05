@@ -373,7 +373,7 @@ router.post('/leagues/:id/calculate-points', requireCreator, async (req, res) =>
 
         if (pred.predicted_winner_id && match.winner_team_id &&
             Number(pred.predicted_winner_id) === Number(match.winner_team_id)) {
-          basePoints += 4;
+          basePoints += 6;
         }
 
         if (pred.predicted_home_score !== null && pred.predicted_away_score !== null &&
